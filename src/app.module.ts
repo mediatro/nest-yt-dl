@@ -7,7 +7,9 @@ import { DlQueueGateway } from './gateways/dl-queue.gateway';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [ConfigModule.forRoot()],
+  imports: [ConfigModule.forRoot({
+    envFilePath: ['.env.local', '.env'],
+  })],
   controllers: [AppController, SearchController, InfoController],
   providers: [AppService, DlQueueGateway],
 })
