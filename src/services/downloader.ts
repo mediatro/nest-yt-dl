@@ -98,7 +98,7 @@ function resolveOutputUrl(filePath: string): string {
 
 function resolveOutputDir(){
   let dir = process.env.DOWNLOADS_DIR;
-  return path.join(os.homedir(), 'Downloads');
+  return dir || path.join(os.homedir(), 'Downloads');
 }
 
 function resolveOutputPath(filename: string, ext?: string): string {
