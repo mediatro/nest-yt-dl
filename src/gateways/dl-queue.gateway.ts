@@ -26,7 +26,7 @@ export class DlQueueGateway implements OnGatewayConnection {
           let ret = {
               event, data
           };
-          //console.log(11,ret);
+          console.log(11,ret);
           return ret;
       }),
     );

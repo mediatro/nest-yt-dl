@@ -21,6 +21,7 @@ export type DownloadProgress = {
   total: number
   time: number
   timeLeft: number
+  downloadUrl?: string
 }
 
 export type Video = {
@@ -58,6 +59,11 @@ export class DownloadController {
   }
 }
 
+type Cut = {
+  from: number,
+  to: number,
+}
+
 export type DownloadParams = {
   video: Video
   format?: ytdl.videoFormat
@@ -65,6 +71,7 @@ export type DownloadParams = {
   splitTracks?: boolean
   controller?: DownloadController
   progressCallback?: (progress: DownloadProgress) => void
+  cut?: Cut
 }
 
 let FFMPEG_PATH: string
@@ -85,6 +92,15 @@ async function clearFile(filename: string) {
   }
 }
 
+function resolveOutputUrl(filePath: string): string {
+  return filePath.replace(resolveOutputDir(), '');
+}
+
+function resolveOutputDir(){
+  let dir = process.env.DOWNLOADS_DIR;
+  return path.join(os.homedir(), 'Downloads');
+}
+
 function resolveOutputPath(filename: string, ext?: string): string {
   let count = 0
   const getSuffix = () => {
@@ -97,7 +113,7 @@ function resolveOutputPath(filename: string, ext?: string): string {
   }
   const getOutPath = () =>
     path.resolve(outputDir, `${filename}${getSuffix()}${ext ? `.${ext}` : '/'}`)
-  const outputDir = path.join(os.homedir(), 'Downloads')
+  const outputDir = resolveOutputDir();
   let outputPath = ''
   do {
     outputPath = getOutPath()
@@ -112,7 +128,8 @@ async function downloadVideo({
   video,
   format,
   controller,
-  progressCallback
+  progressCallback,
+  cut
 }: Omit<DownloadParams, 'audioOnly'>): Promise<void> {
   return new Promise((resolve, reject) => {
     const currentProgress: DownloadProgress = {
@@ -186,10 +203,20 @@ async function downloadVideo({
         }
       )
 
+      let cutFrom = cut.from;
+      let cutTo = cut.to;
+
+      let cutCommand: string[]  = [
+        '-ss',
+        cutFrom.toString(),
+        '-to',
+        cutTo.toString(),
+      ].concat([outputPath]);
+
       // Start the ffmpeg child process
       const ffmpegProcess = cp.spawn(
         FFMPEG_PATH,
-        [
+          [
           // Remove ffmpeg's console spamming
           '-loglevel',
           '8',
@@ -211,8 +238,8 @@ async function downloadVideo({
           '-c:v',
           'copy',
           // Define output file
-          outputPath
-        ],
+        ].concat(cutCommand),
+
         {
           windowsHide: true,
           stdio: [
@@ -237,7 +264,8 @@ async function downloadVideo({
           Object.assign(currentProgress, {
             status: 'finished',
             percent: 1,
-            downloaded: currentProgress.total
+            downloaded: currentProgress.total,
+            downloadUrl: resolveOutputUrl(outputPath)
           })
           progressCallback?.(Object.assign({}, currentProgress))
           resolve()
@@ -258,8 +286,12 @@ async function downloadVideo({
       audioStream.on('error', triggerError)
       videoStream.on('error', triggerError)
 
-      audioStream.pipe(ffmpegProcess.stdio[4] as any)
-      videoStream.pipe(ffmpegProcess.stdio[5 as any] as any)
+      audioStream.pipe(ffmpegProcess.stdio[4] as any).on('error', err => {
+        console.log('audioStream', err);
+      })
+      videoStream.pipe(ffmpegProcess.stdio[5 as any] as any).on('error', err => {
+        console.log('videoStream', err);
+      })
 
       if (controller) {
         controller.pause = () => {
@@ -569,10 +601,6 @@ setInterval(checkQueue, 150)
 
 export async function queueDownload(params: DownloadParams): Promise<void> {
   return new Promise((resolve, reject) => {
-
-    /*params.progressCallback = (progress) => {
-      console.log(progress);
-    }*/
 
     const internalCallback: typeof params.progressCallback = (progress) => {
       params.progressCallback?.(progress)
