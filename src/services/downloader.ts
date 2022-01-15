@@ -22,6 +22,7 @@ export type DownloadProgress = {
   time: number
   timeLeft: number
   downloadUrl?: string
+  downloadFilename?: string
 }
 
 export type Video = {
@@ -96,7 +97,7 @@ function resolveOutputUrl(filePath: string): string {
   return filePath.replace(resolveOutputDir(), '');
 }
 
-function resolveOutputDir(){
+export function resolveOutputDir(){
   let dir = process.env.DOWNLOADS_DIR;
   return dir || path.join(os.homedir(), 'Downloads');
 }
@@ -149,7 +150,7 @@ async function downloadVideo({
     try {
       outputPath = resolveOutputPath(video.title || 'video', 'mp4')
 
-      //console.log(FFMPEG_PATH, outputPath)
+      console.log(FFMPEG_PATH, outputPath)
 
       const startTime = Date.now()
 
@@ -265,7 +266,8 @@ async function downloadVideo({
             status: 'finished',
             percent: 1,
             downloaded: currentProgress.total,
-            downloadUrl: resolveOutputUrl(outputPath)
+            downloadUrl: resolveOutputUrl(outputPath),
+            downloadFilename: path.basename(outputPath),
           })
           progressCallback?.(Object.assign({}, currentProgress))
           resolve()
@@ -336,7 +338,8 @@ async function downloadAudio({
   format,
   controller,
   splitTracks,
-  progressCallback
+  progressCallback,
+  cut
 }: Omit<DownloadParams, 'audioOnly'>): Promise<void> {
   return new Promise((resolve, reject) => {
     const currentProgress: DownloadProgress = {
@@ -394,6 +397,16 @@ async function downloadAudio({
         }
       )
 
+      let cutFrom = cut.from;
+      let cutTo = cut.to;
+
+      let cutCommand: string[]  = [
+        '-ss',
+        cutFrom.toString(),
+        '-to',
+        cutTo.toString(),
+      ].concat([outputPath]);
+
       // Start the ffmpeg child process
       const ffmpegProcess = cp.spawn(
         FFMPEG_PATH,
@@ -413,9 +426,10 @@ async function downloadAudio({
           '0',
           '-map',
           'a',
+          //'-c:a',
+          //'copy',
           // Define output file
-          outputPath
-        ],
+        ].concat(cutCommand),
         {
           windowsHide: true,
           stdio: [
@@ -487,7 +501,9 @@ async function downloadAudio({
           Object.assign(currentProgress, {
             status: 'finished',
             percent: 1,
-            downloaded: currentProgress.total
+            downloaded: currentProgress.total,
+            downloadUrl: resolveOutputUrl(outputPath),
+            downloadFilename: path.basename(outputPath),
           })
           progressCallback?.(Object.assign({}, currentProgress))
           resolve()
@@ -506,7 +522,9 @@ async function downloadAudio({
       }
 
       audioStream.on('error', triggerError)
-      audioStream.pipe(ffmpegProcess.stdio[4] as any)
+      audioStream.pipe(ffmpegProcess.stdio[4] as any).on('error', err => {
+        console.log('audioStream', err);
+      })
 
       if (controller) {
         controller.pause = () => {
