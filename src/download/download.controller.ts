@@ -14,6 +14,8 @@ export class DownloadController {
     )  {
         let filename = params.filename;
         let filenameAbs = path.resolve(resolveOutputDir(), filename);
+
+        response.header('Access-Control-Allow-Origin', '*');
         response.download(filenameAbs, err => {
             try{
                 console.log('cleared', filenameAbs);
