@@ -9,7 +9,7 @@ import * as ffmpegStatic from 'ffmpeg-static'
 //import DownloadAbortError from '../errors/DownloadAbortError'
 //import Video from '../types/Video'
 import * as AudioSplitter from 'audio-splitter'
-
+import * as AdmZip from "adm-zip";
 
 export type DownloadStatus = 'starting' | 'downloading' | 'paused' | 'stopped' | 'finished' | 'failed' | 'queue' | 'processing'
 
