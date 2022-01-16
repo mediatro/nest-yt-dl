@@ -28,7 +28,7 @@ export class DownloadController {
 
         console.log('iphone', isIphone);
 
-        isIphone = true;
+        //isIphone = true;
         if(isIphone){
             let zip = new AdmZip();
             let zipPath = filenameAbs.replace(/\.[^.]+$/, '.zip');
