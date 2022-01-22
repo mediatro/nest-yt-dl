@@ -29,20 +29,27 @@ export class DownloadController {
         console.log('iphone', isIphone);
 
         //isIphone = true;
+        let filenameAbsOrig = '';
+
         if(isIphone){
             let zip = new AdmZip();
             let zipPath = filenameAbs.replace(/\.[^.]+$/, '.zip');
             zip.addLocalFile(filenameAbs);
             zip.writeZip(zipPath);
             console.log('zip', filenameAbs, zipPath);
+            filenameAbsOrig = filenameAbs;
             filenameAbs = zipPath;
         }
 
         res.header('Access-Control-Allow-Origin', '*');
         res.download(filenameAbs, err => {
             try{
-                console.log('cleared', filenameAbs);
                 fs.unlinkSync(filenameAbs);
+                console.log('cleared', filenameAbs);
+                if(filenameAbsOrig != ''){
+                    fs.unlinkSync(filenameAbsOrig);
+                    console.log('cleared', filenameAbsOrig);
+                }
             }catch (e) {
                 console.log(e, err);
             }
