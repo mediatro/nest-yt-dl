@@ -34,7 +34,8 @@ export class DownloadController {
         let filenameAbsOrig = '';
 
         if(isIphone){
-            this.lastFile = filenameAbs;
+            this.lastFile = this.lastFile == filenameAbs
+                ? null : filenameAbs;
             let zip = new AdmZip();
             let zipPath = filenameAbs.replace(/\.[^.]+$/, '.zip');
             zip.addLocalFile(filenameAbs);
@@ -48,7 +49,6 @@ export class DownloadController {
         res.download(filenameAbs, err => {
             try{
                 if(isIphone && this.lastFile == filenameAbsOrig){
-                    this.lastFile = null;
                     return;
                 }
                 fs.unlinkSync(filenameAbs);
