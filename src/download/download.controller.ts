@@ -11,6 +11,8 @@ import * as AdmZip from "adm-zip";
 @Controller('download')
 export class DownloadController {
 
+    lastFile?: string;
+
     @Get()
     getOne(
         @Param() params,
@@ -32,6 +34,7 @@ export class DownloadController {
         let filenameAbsOrig = '';
 
         if(isIphone){
+            this.lastFile = filenameAbs;
             let zip = new AdmZip();
             let zipPath = filenameAbs.replace(/\.[^.]+$/, '.zip');
             zip.addLocalFile(filenameAbs);
@@ -44,6 +47,10 @@ export class DownloadController {
         res.header('Access-Control-Allow-Origin', '*');
         res.download(filenameAbs, err => {
             try{
+                if(isIphone && this.lastFile == filenameAbsOrig){
+                    this.lastFile = null;
+                    return;
+                }
                 fs.unlinkSync(filenameAbs);
                 console.log('cleared', filenameAbs);
                 if(filenameAbsOrig != ''){
